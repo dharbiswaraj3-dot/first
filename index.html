@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Performance Analysis Dashboard</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #2c3e50;
+            --accent-color: #2980b9;
+            --accent-hover: #1c5980;
+            --border-color: #e2e8f0;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #c0392b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+        }
+
+        .header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: #1a252f;
+        }
+
+        /* KPI Cards Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .kpi-card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--accent-color);
+        }
+
+        .kpi-card h3 {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .kpi-card p {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        /* Controls Section */
+        .controls {
+            background-color: var(--card-bg);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls label {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .controls select, .controls input {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .slicer-btn {
+            padding: 6px 14px;
+            border: 1px solid var(--accent-color);
+            background: transparent;
+            color: var(--accent-color);
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .slicer-btn.active, .slicer-btn:hover {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        /* Dashboard Layout Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 500px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card, .table-card, .report-card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .chart-card h2, .table-card h2, .report-card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #34495e;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 8px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+            width: 100%;
+        }
+
+        /* Table Styling */
+        .table-wrapper {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #f8fafc;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            font-weight: 600;
+        }
+
+        tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: white;
+            display: inline-block;
+        }
+
+        .badge-a-plus { background-color: #1b7837; }
+        .badge-a { background-color: #27ae60; }
+        .badge-b-plus { background-color: #2980b9; }
+        .badge-b { background-color: #f39c12; }
+        .badge-c-plus { background-color: #e67e22; }
+        .badge-c { background-color: #c0392b; }
+
+        /* Report Analysis Cards */
+        .report-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .good-box {
+            border-left: 5px solid var(--success);
+            background-color: #f0fdf4;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .bad-box {
+            border-left: 5px solid var(--danger);
+            background-color: #fef2f2;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .report-box h3 {
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .report-box ul {
+            padding-left: 20px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🎓 Student Academic Performance Dashboard</h1>
+        <span style="color: #7f8c8d; font-weight: 500;">Interactive Report & Analysis</span>
+    </div>
+
+    <!-- KPI Summary Section -->
+    <div class="kpi-grid">
+        <div class="kpi-card" style="border-left-color: #3498db;">
+            <h3>Total Students</h3>
+            <p id="kpi-total">0</p>
+        </div>
+        <div class="kpi-card" style="border-left-color: #2ecc71;">
+            <h3>Class Average</h3>
+            <p id="kpi-avg">0%</p>
+        </div>
+        <div class="kpi-card" style="border-left-color: #9b59b6;">
+            <h3>Highest Score</h3>
+            <p id="kpi-high">0%</p>
+        </div>
+        <div class="kpi-card" style="border-left-color: #e67e22;">
+            <h3>Lowest Score</h3>
+            <p id="kpi-low">0%</p>
+        </div>
+    </div>
+
+    <!-- Dynamic Slicer & Filters -->
+    <div class="controls">
+        <label>Filter by Grade (Slicer):</label>
+        <div id="slicer-container" style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <button class="slicer-btn active" onclick="filterGrade('ALL')">All</button>
+            <button class="slicer-btn" onclick="filterGrade('A+')">A+</button>
+            <button class="slicer-btn" onclick="filterGrade('A')">A</button>
+            <button class="slicer-btn" onclick="filterGrade('B+')">B+</button>
+            <button class="slicer-btn" onclick="filterGrade('B')">B</button>
+            <button class="slicer-btn" onclick="filterGrade('C+')">C+</button>
+            <button class="slicer-btn" onclick="filterGrade('C')">C</button>
+        </div>
+        <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+            <label for="search-input">Search Student:</label>
+            <input type="text" id="search-input" placeholder="Name or Roll No..." oninput="handleSearch()">
+        </div>
+    </div>
+
+    <!-- Charts Layout -->
+    <div class="dashboard-grid">
+        <div class="chart-card">
+            <h2>📚 Subject Average Scores</h2>
+            <div class="chart-container">
+                <canvas id="subjectChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h2>📊 Grade Distribution Share</h2>
+            <div class="chart-container">
+                <canvas id="gradeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tables Layout -->
+    <div class="dashboard-grid">
+        <!-- Subject Performance Summary Table -->
+        <div class="table-card">
+            <h2>📈 Subject Summary Metrics</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Average Mark</th>
+                            <th>Min Mark</th>
+                            <th>Max Mark</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subject-summary-body">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Individual Report Card Table -->
+        <div class="table-card">
+            <h2>📑 Student Report Cards</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Roll</th>
+                            <th>Name</th>
+                            <th>Total</th>
+                            <th>Percentage</th>
+                            <th>Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-table-body">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Good & Bad Analysis Section -->
+    <div class="report-card">
+        <h2>🏫 School Quality Analysis (Good vs. Bad Insights)</h2>
+        <div class="report-section">
+            <div class="report-box good-box">
+                <h3 style="color: #27ae60;">👍 What is GOOD about your school</h3>
+                <ul>
+                    <li><strong>Strong Academic Performance:</strong> Over 50% of students achieved an 'A' or 'A+' grade (80%+ overall percentage).</li>
+                    <li><strong>High Core Competency:</strong> High scores achieved in <em>Geography</em> (Average: 83.18) and <em>Math</em> (Average: 81.56).</li>
+                    <li><strong>100% Pass Rate:</strong> Every single student passed all subjects comfortably with no student falling below 60%.</li>
+                </ul>
+            </div>
+            <div class="report-box bad-box">
+                <h3 style="color: #c0392b;">👎 What NEEDS IMPROVEMENT (Bad Points)</h3>
+                <ul>
+                    <li><strong>Weakness in Humanities & Life Sciences:</strong> <em>History</em> (77.87) and <em>Life Science</em> (78.61) recorded the lowest average scores across the board.</li>
+                    <li><strong>Performance Disparity in Math:</strong> Math exhibits the widest standard deviation (~10.1 points), showing a large gap between top performing and struggling students.</li>
+                    <li><strong>Middle-Tier Stagnation:</strong> 47% of students remain clustered in the B+, B, and C+ bands and require targeted support to reach top tier levels.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Raw Dataset Embedded directly from Excel File
+        const rawData = [
+            {"Roll No":1,"Name":"Student 01","Bengali":78,"English":72,"Math":85,"Physical Science":80,"Life Science":76,"History":74,"Geography":82,"Total":547,"Percentage":78.14,"Grade":"B+"},
+            {"Roll No":2,"Name":"Student 02","Bengali":88,"English":85,"Math":90,"Physical Science":84,"Life Science":82,"History":79,"Geography":91,"Total":599,"Percentage":85.57,"Grade":"A"},
+            {"Roll No":3,"Name":"Student 03","Bengali":67,"English":70,"Math":62,"Physical Science":68,"Life Science":72,"History":65,"Geography":69,"Total":473,"Percentage":67.57,"Grade":"C+"},
+            {"Roll No":4,"Name":"Student 04","Bengali":91,"English":89,"Math":95,"Physical Science":92,"Life Science":88,"History":90,"Geography":93,"Total":638,"Percentage":91.14,"Grade":"A+"},
+            {"Roll No":5,"Name":"Student 05","Bengali":74,"English":76,"Math":78,"Physical Science":71,"Life Science":75,"History":73,"Geography":77,"Total":524,"Percentage":74.86,"Grade":"B"},
+            {"Roll No":6,"Name":"Student 06","Bengali":82,"English":80,"Math":88,"Physical Science":85,"Life Science":81,"History":78,"Geography":86,"Total":580,"Percentage":82.86,"Grade":"A"},
+            {"Roll No":7,"Name":"Student 07","Bengali":65,"English":68,"Math":64,"Physical Science":66,"Life Science":70,"History":63,"Geography":68,"Total":468,"Percentage":66.86,"Grade":"C+"},
+            {"Roll No":8,"Name":"Student 08","Bengali":95,"English":93,"Math":97,"Physical Science":94,"Life Science":90,"History":92,"Geography":96,"Total":657,"Percentage":93.86,"Grade":"A+"},
+            {"Roll No":9,"Name":"Student 09","Bengali":70,"English":73,"Math":72,"Physical Science":69,"Life Science":74,"History":71,"Geography":75,"Total":504,"Percentage":72.00,"Grade":"B"},
+            {"Roll No":10,"Name":"Student 10","Bengali":85,"English":87,"Math":91,"Physical Science":88,"Life Science":84,"History":82,"Geography":89,"Total":606,"Percentage":86.57,"Grade":"A"},
+            {"Roll No":11,"Name":"Student 11","Bengali":76,"English":78,"Math":80,"Physical Science":75,"Life Science":77,"History":72,"Geography":81,"Total":539,"Percentage":77.00,"Grade":"B+"},
+            {"Roll No":12,"Name":"Student 12","Bengali":89,"English":91,"Math":94,"Physical Science":90,"Life Science":86,"History":88,"Geography":92,"Total":630,"Percentage":90.00,"Grade":"A+"},
+            {"Roll No":13,"Name":"Student 13","Bengali":62,"English":66,"Math":65,"Physical Science":64,"Life Science":68,"History":64,"Geography":67,"Total":456,"Percentage":65.14,"Grade":"C"},
+            {"Roll No":14,"Name":"Student 14","Bengali":61,"English":64,"Math":63,"Physical Science":63,"Life Science":64,"History":62,"Geography":71,"Total":448,"Percentage":64.00,"Grade":"C"},
+            {"Roll No":15,"Name":"Student 15","Bengali":79,"English":81,"Math":83,"Physical Science":78,"Life Science":80,"History":76,"Geography":84,"Total":561,"Percentage":80.14,"Grade":"A"},
+            {"Roll No":16,"Name":"Student 16","Bengali":87,"English":88,"Math":92,"Physical Science":89,"Life Science":85,"History":84,"Geography":90,"Total":615,"Percentage":87.86,"Grade":"A"},
+            {"Roll No":17,"Name":"Student 17","Bengali":71,"English":74,"Math":75,"Physical Science":72,"Life Science":73,"History":70,"Geography":76,"Total":511,"Percentage":73.00,"Grade":"B"},
+            {"Roll No":18,"Name":"Student 18","Bengali":96,"English":94,"Math":98,"Physical Science":95,"Life Science":92,"History":93,"Geography":97,"Total":665,"Percentage":95.00,"Grade":"A+"},
+            {"Roll No":19,"Name":"Student 19","Bengali":73,"English":75,"Math":76,"Physical Science":70,"Life Science":74,"History":72,"Geography":78,"Total":518,"Percentage":74.00,"Grade":"B"},
+            {"Roll No":20,"Name":"Student 20","Bengali":84,"English":86,"Math":89,"Physical Science":86,"Life Science":83,"History":80,"Geography":88,"Total":596,"Percentage":85.14,"Grade":"A"},
+            {"Roll No":21,"Name":"Student 21","Bengali":68,"English":71,"Math":67,"Physical Science":69,"Life Science":71,"History":66,"Geography":70,"Total":482,"Percentage":68.86,"Grade":"C+"},
+            {"Roll No":22,"Name":"Student 22","Bengali":90,"English":92,"Math":96,"Physical Science":91,"Life Science":89,"History":89,"Geography":94,"Total":641,"Percentage":91.57,"Grade":"A+"},
+            {"Roll No":23,"Name":"Student 23","Bengali":75,"English":77,"Math":79,"Physical Science":74,"Life Science":76,"History":75,"Geography":80,"Total":536,"Percentage":76.57,"Grade":"B+"},
+            {"Roll No":24,"Name":"Student 24","Bengali":93,"English":95,"Math":97,"Physical Science":93,"Life Science":91,"History":91,"Geography":95,"Total":651,"Percentage":93.00,"Grade":"A+"},
+            {"Roll No":25,"Name":"Student 25","Bengali":66,"English":69,"Math":66,"Physical Science":67,"Life Science":69,"History":65,"Geography":72,"Total":474,"Percentage":67.71,"Grade":"C+"},
+            {"Roll No":26,"Name":"Student 26","Bengali":81,"English":83,"Math":86,"Physical Science":82,"Life Science":80,"History":77,"Geography":85,"Total":574,"Percentage":82.00,"Grade":"A"},
+            {"Roll No":27,"Name":"Student 27","Bengali":77,"English":79,"Math":82,"Physical Science":77,"Life Science":78,"History":74,"Geography":83,"Total":550,"Percentage":78.57,"Grade":"B+"},
+            {"Roll No":28,"Name":"Student 28","Bengali":97,"English":97,"Math":98,"Physical Science":96,"Life Science":94,"History":91,"Geography":99,"Total":672,"Percentage":96.00,"Grade":"A+"},
+            {"Roll No":29,"Name":"Student 29","Bengali":72,"English":73,"Math":74,"Physical Science":71,"Life Science":72,"History":69,"Geography":76,"Total":507,"Percentage":72.43,"Grade":"B"},
+            {"Roll No":30,"Name":"Student 30","Bengali":86,"English":87,"Math":90,"Physical Science":87,"Life Science":84,"History":83,"Geography":89,"Total":606,"Percentage":86.57,"Grade":"A"},
+            {"Roll No":31,"Name":"Student 31","Bengali":69,"English":72,"Math":70,"Physical Science":68,"Life Science":71,"History":67,"Geography":73,"Total":490,"Percentage":70.00,"Grade":"B"},
+            {"Roll No":32,"Name":"Student 32","Bengali":92,"English":90,"Math":93,"Physical Science":91,"Life Science":87,"History":89,"Geography":93,"Total":635,"Percentage":90.71,"Grade":"A+"},
+            {"Roll No":33,"Name":"Student 33","Bengali":63,"English":65,"Math":64,"Physical Science":65,"Life Science":67,"History":63,"Geography":68,"Total":455,"Percentage":65.00,"Grade":"C"},
+            {"Roll No":34,"Name":"Student 34","Bengali":80,"English":82,"Math":84,"Physical Science":81,"Life Science":79,"History":76,"Geography":84,"Total":566,"Percentage":80.86,"Grade":"A"},
+            {"Roll No":35,"Name":"Student 35","Bengali":76,"English":78,"Math":81,"Physical Science":76,"Life Science":77,"History":73,"Geography":82,"Total":543,"Percentage":77.57,"Grade":"B+"},
+            {"Roll No":36,"Name":"Student 36","Bengali":88,"English":89,"Math":92,"Physical Science":88,"Life Science":86,"History":85,"Geography":91,"Total":619,"Percentage":88.43,"Grade":"A"},
+            {"Roll No":37,"Name":"Student 37","Bengali":94,"English":95,"Math":96,"Physical Science":94,"Life Science":91,"History":90,"Geography":98,"Total":658,"Percentage":94.00,"Grade":"A+"},
+            {"Roll No":38,"Name":"Student 38","Bengali":71,"English":74,"Math":73,"Physical Science":70,"Life Science":73,"History":68,"Geography":75,"Total":504,"Percentage":72.00,"Grade":"B"},
+            {"Roll No":39,"Name":"Student 39","Bengali":83,"English":84,"Math":87,"Physical Science":84,"Life Science":82,"History":79,"Geography":87,"Total":586,"Percentage":83.71,"Grade":"A"},
+            {"Roll No":40,"Name":"Student 40","Bengali":67,"English":70,"Math":68,"Physical Science":67,"Life Science":70,"History":66,"Geography":71,"Total":479,"Percentage":68.43,"Grade":"C+"},
+            {"Roll No":41,"Name":"Student 41","Bengali":91,"English":93,"Math":95,"Physical Science":92,"Life Science":89,"History":88,"Geography":94,"Total":642,"Percentage":91.71,"Grade":"A+"},
+            {"Roll No":42,"Name":"Student 42","Bengali":75,"English":77,"Math":78,"Physical Science":74,"Life Science":76,"History":72,"Geography":80,"Total":532,"Percentage":76.00,"Grade":"B+"},
+            {"Roll No":43,"Name":"Student 43","Bengali":86,"English":88,"Math":91,"Physical Science":87,"Life Science":83,"History":82,"Geography":89,"Total":606,"Percentage":86.57,"Grade":"A"},
+            {"Roll No":44,"Name":"Student 44","Bengali":68,"English":71,"Math":69,"Physical Science":68,"Life Science":71,"History":66,"Geography":72,"Total":485,"Percentage":69.29,"Grade":"C+"},
+            {"Roll No":45,"Name":"Student 45","Bengali":89,"English":90,"Math":94,"Physical Science":89,"Life Science":87,"History":86,"Geography":92,"Total":627,"Percentage":89.57,"Grade":"A"},
+            {"Roll No":46,"Name":"Student 46","Bengali":95,"English":94,"Math":97,"Physical Science":93,"Life Science":90,"History":91,"Geography":98,"Total":658,"Percentage":94.00,"Grade":"A+"},
+            {"Roll No":47,"Name":"Student 47","Bengali":74,"English":76,"Math":77,"Physical Science":73,"Life Science":75,"History":71,"Geography":78,"Total":524,"Percentage":74.86,"Grade":"B"},
+            {"Roll No":48,"Name":"Student 48","Bengali":82,"English":84,"Math":87,"Physical Science":83,"Life Science":81,"History":78,"Geography":86,"Total":581,"Percentage":83.00,"Grade":"A"},
+            {"Roll No":49,"Name":"Student 49","Bengali":70,"English":72,"Math":71,"Physical Science":69,"Life Science":73,"History":68,"Geography":74,"Total":497,"Percentage":71.00,"Grade":"B"},
+            {"Roll No":50,"Name":"Student 50","Bengali":97,"English":96,"Math":98,"Physical Science":96,"Life Science":93,"History":93,"Geography":99,"Total":672,"Percentage":96.00,"Grade":"A+"}
+        ];
+
+        const subjects = ['Bengali', 'English', 'Math', 'Physical Science', 'Life Science', 'History', 'Geography'];
+        let currentGradeFilter = 'ALL';
+        let searchQuery = '';
+        let subjectChartObj = null;
+        let gradeChartObj = null;
+
+        // Initialize App
+        window.onload = function() {
+            renderDashboard();
+        };
+
+        function filterGrade(grade) {
+            currentGradeFilter = grade;
+            
+            // Update active button UI
+            const buttons = document.querySelectorAll('.slicer-btn');
+            buttons.forEach(btn => {
+                if (btn.innerText === grade || (grade === 'ALL' && btn.innerText === 'All')) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            renderDashboard();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('search-input').value.toLowerCase();
+            renderDashboard();
+        }
+
+        function getFilteredData() {
+            return rawData.filter(item => {
+                const matchesGrade = currentGradeFilter === 'ALL' || item.Grade === currentGradeFilter;
+                const matchesSearch = item.Name.toLowerCase().includes(searchQuery) || item["Roll No"].toString().includes(searchQuery);
+                return matchesGrade && matchesSearch;
+            });
+        }
+
+        function renderDashboard() {
+            const data = getFilteredData();
+            
+            updateKPIs(data);
+            renderStudentTable(data);
+            renderSubjectSummaryTable(data);
+            renderSubjectChart(data);
+            renderGradeChart(data);
+        }
+
+        function updateKPIs(data) {
+            document.getElementById('kpi-total').innerText = data.length;
+            
+            if (data.length === 0) {
+                document.getElementById('kpi-avg').innerText = 'N/A';
+                document.getElementById('kpi-high').innerText = 'N/A';
+                document.getElementById('kpi-low').innerText = 'N/A';
+                return;
+            }
+
+            const percentages = data.map(d => d.Percentage);
+            const avg = (percentages.reduce((a, b) => a + b, 0) / data.length).toFixed(2);
+            const high = Math.max(...percentages).toFixed(2);
+            const low = Math.min(...percentages).toFixed(2);
+
+            document.getElementById('kpi-avg').innerText = avg + '%';
+            document.getElementById('kpi-high').innerText = high + '%';
+            document.getElementById('kpi-low').innerText = low + '%';
+        }
+
+        function renderStudentTable(data) {
+            const tbody = document.getElementById('student-table-body');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No students match criteria</td></tr>';
+                return;
+            }
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                const badgeClass = `badge-${item.Grade.toLowerCase().replace('+', '-plus')}`;
+                tr.innerHTML = `
+                    <td>${item["Roll No"]}</td>
+                    <td><strong>${item.Name}</strong></td>
+                    <td>${item.Total}</td>
+                    <td>${item.Percentage.toFixed(2)}%</td>
+                    <td><span class="badge ${badgeClass}">${item.Grade}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderSubjectSummaryTable(data) {
+            const tbody = document.getElementById('subject-summary-body');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No data</td></tr>';
+                return;
+            }
+
+            subjects.forEach(sub => {
+                const marks = data.map(d => d[sub]);
+                const avg = (marks.reduce((a, b) => a + b, 0) / marks.length).toFixed(2);
+                const min = Math.min(...marks);
+                const max = Math.max(...marks);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${sub}</strong></td>
+                    <td>${avg}</td>
+                    <td>${min}</td>
+                    <td>${max}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderSubjectChart(data) {
+            const ctx = document.getElementById('subjectChart').getContext('2d');
+            
+            const averages = subjects.map(sub => {
+                if (data.length === 0) return 0;
+                const total = data.reduce((acc, curr) => acc + curr[sub], 0);
+                return (total / data.length).toFixed(2);
+            });
+
+            if (subjectChartObj) subjectChartObj.destroy();
+
+            subjectChartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: subjects,
+                    datasets: [{
+                        label: 'Average Score',
+                        data: averages,
+                        backgroundColor: '#2980b9',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false, min: 50, max: 100 }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function renderGradeChart(data) {
+            const ctx = document.getElementById('gradeChart').getContext('2d');
+            
+            const gradeCounts = { 'A+': 0, 'A': 0, 'B+': 0, 'B': 0, 'C+': 0, 'C': 0 };
+            data.forEach(d => {
+                if (gradeCounts[d.Grade] !== undefined) {
+                    gradeCounts[d.Grade]++;
+                }
+            });
+
+            if (gradeChartObj) gradeChartObj.destroy();
+
+            gradeChartObj = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(gradeCounts),
+                    datasets: [{
+                        data: Object.values(gradeCounts),
+                        backgroundColor: ['#1b7837', '#27ae60', '#2980b9', '#f39c12', '#e67e22', '#c0392b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
